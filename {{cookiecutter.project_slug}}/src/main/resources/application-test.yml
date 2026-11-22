@@ -1,0 +1,27 @@
+logging:
+  level:
+    root: WARN
+    {{ cookiecutter.package_name }}: INFO
+    org.springframework.test: INFO
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+management:
+  opentelemetry:
+    enabled: false
+  tracing:
+    enabled: false
+  otlp:
+    metrics:
+      export:
+        enabled: false
+
+app:
+  integrations:
+    rabbitmq:
+      enabled: false
+    stomp:
+      enabled: false

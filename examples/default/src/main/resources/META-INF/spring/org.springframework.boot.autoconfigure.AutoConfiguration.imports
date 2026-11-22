@@ -1,0 +1,2 @@
+com.example.springmodulithapplication.notifications.NotificationsAutoConfiguration
+com.example.springmodulithapplication.audit.AuditAutoConfiguration

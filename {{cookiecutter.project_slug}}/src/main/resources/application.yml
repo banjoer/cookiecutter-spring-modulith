@@ -1,0 +1,149 @@
+{% set rabbit = cookiecutter.include_rabbitmq|string|lower == 'true' -%}
+{% set stomp = cookiecutter.include_stomp|string|lower == 'true' -%}
+{% set observability = cookiecutter.include_observability|string|lower == 'true' -%}
+spring:
+  application:
+    name: {{ cookiecutter.project_slug }}
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/${DB_NAME:${POSTGRES_DB:application}}}
+    username: ${DB_USERNAME:${POSTGRES_USERNAME:application}}
+    password: ${DB_PASSWORD:${POSTGRES_PASSWORD:}}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  data:
+    jpa:
+      repositories:
+        # Repository scanning is explicitly owned by each module's activation boundary.
+        enabled: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+{% if rabbit %}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:application}
+    password: ${RABBITMQ_PASSWORD:}
+    connection-timeout: 5s
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 500ms
+          max-interval: 5s
+          max-attempts: 5
+          multiplier: 2
+{% endif %}
+
+server:
+  port: ${APP_PORT:8080}
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+{% if rabbit %}
+  health:
+    rabbit:
+      enabled: ${app.integrations.rabbitmq.enabled:false}
+{% endif %}
+  info:
+    env:
+      enabled: true
+    build:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+{% if observability %}
+  tracing:
+    sampling:
+      probability: ${OTEL_TRACES_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}
+    resource-attributes:
+      deployment.environment: ${DEPLOYMENT_ENVIRONMENT:local}
+{% endif %}
+
+info:
+  app:
+    name: {{ cookiecutter.project_slug }}
+    description: "{{ cookiecutter.project_description }}"
+    version: 0.0.1-SNAPSHOT
+
+app:
+  modules:
+    identity:
+      enabled: {{ cookiecutter.include_identity_module|lower }}
+      registration-enabled: true
+      minimum-password-length: 12
+    notifications:
+      enabled: {{ cookiecutter.include_notifications_module|lower }}
+      email:
+        enabled: false
+        from: ${MAIL_FROM:}
+        subject-prefix: "[{{ cookiecutter.project_slug }}] "
+    audit:
+      enabled: {{ cookiecutter.include_audit_module|lower }}
+      max-page-size: 100
+{% if rabbit %}
+  integrations:
+    rabbitmq:
+      enabled: true
+      exchange: application.events
+      queue-prefix: application
+      routing-key: domain-events
+      externalize-domain-events: true
+      outbox-poll-interval-ms: 2000
+      outbox-batch-size: 50
+      publisher-confirm-timeout-seconds: 10
+{% endif %}
+{% if stomp %}
+{% if not rabbit %}
+  integrations:
+{% endif %}
+    stomp:
+      enabled: true
+      endpoint: /ws
+      application-prefix: /app
+      broker-prefix: /topic
+      user-destination-prefix: /user
+      broker-type: ${STOMP_BROKER_TYPE:simple}
+      require-authentication: true
+      allowed-origins:
+        - ${STOMP_ALLOWED_ORIGIN:http://localhost:8080}
+      relay:
+        host: ${STOMP_RELAY_HOST:}
+        port: ${STOMP_RELAY_PORT:61613}
+        client-login: ${STOMP_RELAY_CLIENT_LOGIN:}
+        client-passcode: ${STOMP_RELAY_CLIENT_PASSCODE:}
+        system-login: ${STOMP_RELAY_SYSTEM_LOGIN:}
+        system-passcode: ${STOMP_RELAY_SYSTEM_PASSCODE:}
+{% endif %}

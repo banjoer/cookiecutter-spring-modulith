@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.idea/
+.vscode/
+.DS_Store
+*.log
+/examples/*/build/
+/examples/*/.gradle/
+/examples/*/.env
+/tmp/

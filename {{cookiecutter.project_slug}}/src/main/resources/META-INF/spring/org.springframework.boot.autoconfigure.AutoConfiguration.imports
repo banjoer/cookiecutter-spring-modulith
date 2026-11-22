@@ -1,0 +1,2 @@
+{{ cookiecutter.package_name }}.notifications.NotificationsAutoConfiguration
+{{ cookiecutter.package_name }}.audit.AuditAutoConfiguration

@@ -1,0 +1,11 @@
+# Dependency and plugin versions are centralized here.
+# Spring Boot's BOM manages the versions of Spring projects, Jackson, Flyway,
+# Testcontainers, Micrometer, and the other libraries used by this project.
+[versions]
+spring-boot = "4.2.0"
+# Spring Modulith is released in lock-step with Spring Boot:
+# Boot 4.2.x -> Modulith 2.2.x, Boot 4.1.x -> Modulith 2.1.x, Boot 4.0.x -> Modulith 2.0.x.
+spring-modulith = "2.2.0"
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

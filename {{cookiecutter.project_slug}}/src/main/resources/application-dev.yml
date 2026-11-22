@@ -1,0 +1,20 @@
+logging:
+  level:
+    root: INFO
+    {{ cookiecutter.package_name }}: DEBUG
+    org.springframework.security: INFO
+    org.springframework.amqp: INFO
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-},%X{correlationId:-}]"
+
+management:
+  endpoint:
+    health:
+      show-details: always
+
+spring:
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
+        highlight_sql: true

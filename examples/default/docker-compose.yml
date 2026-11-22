@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-application}
+      POSTGRES_USER: ${POSTGRES_USERNAME:-application}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    hostname: rabbitmq
+    command: >
+      sh -c "rabbitmq-plugins enable --offline rabbitmq_stomp && rabbitmq-server"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-application}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+      # STOMP is enabled explicitly in the command above and is independent from AMQP.
+      - "61613:61613"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spring-modulith-application:local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      APP_PORT: 8080
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-application}
+      DB_USERNAME: ${POSTGRES_USERNAME:-application}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-application}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+
+
+      STOMP_BROKER_TYPE: ${STOMP_BROKER_TYPE:-simple}
+      STOMP_RELAY_HOST: ${STOMP_RELAY_HOST:-rabbitmq}
+      STOMP_RELAY_PORT: ${STOMP_RELAY_PORT:-61613}
+      STOMP_RELAY_CLIENT_LOGIN: ${STOMP_RELAY_CLIENT_LOGIN:-application}
+      STOMP_RELAY_CLIENT_PASSCODE: ${STOMP_RELAY_CLIENT_PASSCODE:-}
+      STOMP_RELAY_SYSTEM_LOGIN: ${STOMP_RELAY_SYSTEM_LOGIN:-application}
+      STOMP_RELAY_SYSTEM_PASSCODE: ${STOMP_RELAY_SYSTEM_PASSCODE:-}
+      STOMP_ALLOWED_ORIGIN: ${STOMP_ALLOWED_ORIGIN:-http://localhost:8080}
+
+
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://host.docker.internal:4318}
+      OTEL_TRACES_SAMPLING_PROBABILITY: ${OTEL_TRACES_SAMPLING_PROBABILITY:-1.0}
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-local}
+
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+volumes:
+  postgres-data:
+
+  rabbitmq-data:
+

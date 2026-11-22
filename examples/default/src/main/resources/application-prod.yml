@@ -1,0 +1,27 @@
+logging:
+  structured:
+    format:
+      console: ecs
+
+management:
+  endpoint:
+    health:
+      show-details: never
+
+server:
+  forward-headers-strategy: framework
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+# Production notes:
+# - Terminate TLS in front of the application or configure server.ssl.*.
+# - Replace HTTP Basic with your organization's OIDC, mTLS, or token-based authentication.
+# - Send structured logs to a durable log platform and redact sensitive fields.
+# - Scrape /actuator/prometheus or export metrics through the observability pipeline.
